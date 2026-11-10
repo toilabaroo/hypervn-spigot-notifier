@@ -29,8 +29,8 @@ def send_discord_notification(version: str, previous: str) -> None:
         "embeds": [{
             "title": "🚀 TuTienCore vừa có phiên bản mới!",
             "description": (
-                f"**Phiên bản mới:** \`{version}\`\n"
-                f"**Phiên bản trước:** \`{previous}\`\n\n"
+                f"**Phiên bản mới:** `{version}`\n"
+                f"**Phiên bản trước:** `{previous}`\n\n"
                 f"[Xem tài nguyên và changelog trên SpigotMC]({RESOURCE_URL})"
             ),
             "url": RESOURCE_URL,
