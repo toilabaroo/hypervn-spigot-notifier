@@ -10,6 +10,7 @@ VERSION_API = f"https://api.spigotmc.org/legacy/update.php?resource={RESOURCE_ID
 RESOURCE_URL = f"https://www.spigotmc.org/resources/{RESOURCE_ID}/"
 STATE_FILE = Path("last_version.txt")
 
+
 def fetch_latest_version() -> str:
     request = Request(VERSION_API, headers={"User-Agent": "HyperVN-Spigot-Notifier/1.0"})
     with urlopen(request, timeout=20) as response:
@@ -17,6 +18,7 @@ def fetch_latest_version() -> str:
     if not version or len(version) > 100:
         raise RuntimeError(f"SpigotMC returned an invalid version: {version!r}")
     return version
+
 
 def send_discord_notification(version: str, previous: str) -> None:
     webhook = os.environ.get("DISCORD_WEBHOOK", "").strip()
@@ -27,8 +29,8 @@ def send_discord_notification(version: str, previous: str) -> None:
         "embeds": [{
             "title": "🚀 TuTienCore vừa có phiên bản mới!",
             "description": (
-                f"**Phiên bản mới:** `{version}`\\n"
-                f"**Phiên bản trước:** `{previous}`\\n\\n"
+                f"**Phiên bản mới:** \`{version}\`\n"
+                f"**Phiên bản trước:** \`{previous}\`\n\n"
                 f"[Xem tài nguyên và changelog trên SpigotMC]({RESOURCE_URL})"
             ),
             "url": RESOURCE_URL,
@@ -42,24 +44,26 @@ def send_discord_notification(version: str, previous: str) -> None:
         if response.status not in (200, 204):
             raise RuntimeError(f"Discord webhook returned HTTP {response.status}")
 
+
 def main() -> int:
     try:
         latest = fetch_latest_version()
         previous = STATE_FILE.read_text(encoding="utf-8").strip() if STATE_FILE.exists() else ""
         if not previous:
-            STATE_FILE.write_text(latest + "\\n", encoding="utf-8")
+            STATE_FILE.write_text(latest + "\n", encoding="utf-8")
             print(f"Baseline saved: TuTienCore {latest}. No notification sent.")
             return 0
         if latest == previous:
             print(f"No update: TuTienCore {latest}")
             return 0
         send_discord_notification(latest, previous)
-        STATE_FILE.write_text(latest + "\\n", encoding="utf-8")
+        STATE_FILE.write_text(latest + "\n", encoding="utf-8")
         print(f"Notification sent: {previous} -> {latest}")
         return 0
     except (HTTPError, URLError, TimeoutError, RuntimeError, OSError) as error:
         print(f"Notifier failed: {error}", file=sys.stderr)
         return 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
