@@ -7,17 +7,33 @@ from urllib.error import URLError, HTTPError
 
 RESOURCE_ID = "139171"
 VERSION_API = f"https://api.spigotmc.org/legacy/update.php?resource={RESOURCE_ID}"
+SPIGET_VERSION_API = f"https://api.spiget.org/v2/resources/{RESOURCE_ID}/versions/latest"
 RESOURCE_URL = f"https://www.spigotmc.org/resources/{RESOURCE_ID}/"
 STATE_FILE = Path("last_version.txt")
 
 
 def fetch_latest_version() -> str:
     request = Request(VERSION_API, headers={"User-Agent": "HyperVN-Spigot-Notifier/1.0"})
-    with urlopen(request, timeout=20) as response:
-        version = response.read().decode("utf-8").strip()
-    if not version or len(version) > 100:
-        raise RuntimeError(f"SpigotMC returned an invalid version: {version!r}")
-    return version
+    try:
+        with urlopen(request, timeout=20) as response:
+            version = response.read().decode("utf-8").strip()
+        if version and len(version) <= 100:
+            print("Version source: SpigotMC API")
+            return version
+        raise RuntimeError("SpigotMC returned an invalid version")
+    except (HTTPError, URLError, TimeoutError, RuntimeError) as primary_error:
+        print(f"SpigotMC API unavailable ({primary_error}); trying Spiget fallback.")
+        fallback = Request(
+            SPIGET_VERSION_API,
+            headers={"User-Agent": "HyperVN-Spigot-Notifier/1.0", "Accept": "application/json"}
+        )
+        with urlopen(fallback, timeout=20) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        version = str(data.get("name", "")).strip()
+        if not version or len(version) > 100:
+            raise RuntimeError(f"Spiget returned an invalid version: {data!r}")
+        print("Version source: Spiget API fallback")
+        return version
 
 
 def send_discord_notification(version: str, previous: str) -> None:
@@ -29,8 +45,8 @@ def send_discord_notification(version: str, previous: str) -> None:
         "embeds": [{
             "title": "🚀 TuTienCore vừa có phiên bản mới!",
             "description": (
-                f"**Phiên bản mới:** `{version}`\n"
-                f"**Phiên bản trước:** `{previous}`\n\n"
+                f"**Phiên bản mới:** {version}\n"
+                f"**Phiên bản trước:** {previous}\n\n"
                 f"[Xem tài nguyên và changelog trên SpigotMC]({RESOURCE_URL})"
             ),
             "url": RESOURCE_URL,
@@ -60,7 +76,7 @@ def main() -> int:
         STATE_FILE.write_text(latest + "\n", encoding="utf-8")
         print(f"Notification sent: {previous} -> {latest}")
         return 0
-    except (HTTPError, URLError, TimeoutError, RuntimeError, OSError) as error:
+    except (HTTPError, URLError, TimeoutError, RuntimeError, OSError, ValueError) as error:
         print(f"Notifier failed: {error}", file=sys.stderr)
         return 1
 
