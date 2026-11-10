@@ -1,0 +1,39 @@
+name: SpigotMC Update Notifier
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: spigot-update-notifier
+  cancel-in-progress: false
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check SpigotMC version
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        run: python notifier.py
+      - name: Save detected version
+        run: |
+          if [[ -n "$(git status --porcelain last_version.txt)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add last_version.txt
+            git commit -m "chore: update last seen SpigotMC version"
+            git push
+          fi
